@@ -78,10 +78,26 @@ class Window(tk.Toplevel):
             # On essai d'exécuter notre requête
             try:
                 cursor = db.data.cursor()
-                result = cursor.execute("""SELECT code_departement, nom_departement, 1, 1
-                                            FROM Departements JOIN Regions USING (code_region)
-                                            WHERE nom_region = ?
-                                            ORDER BY code_departement""", [region])
+#                result = cursor.execute("""SELECT code_departement, nom_departement, COUNT(date_mesure) AS num_mesures, AVG(M.temperature_moy_mesure) AS moy_temp_moyenne
+#                                            FROM Departements D
+#                                            JOIN Regions R USING (code_region)
+#                                            JOIN Mesures M USING (code_departement)
+#                                            WHERE nom_region = ?
+#                                            GROUP BY code_departement
+#                                            """, [region])
+                result = cursor.execute(""" WITH MesuresParDep AS (
+                                                SELECT M.code_departement, D.nom_departement, COUNT(M.date_mesure) AS num_mesures
+                                                FROM Mesures M
+                                                JOIN Departements D USING (code_departement)
+                                                JOIN Regions R USING (code_region)
+                                                WHERE R.nom_region = ?
+                                                GROUP BY code_departement
+                                            )
+                                        SELECT code_departement, nom_departement, num_mesures, AVG(M.temperature_moy_mesure) AS moy_temp_moyenne
+                                        FROM MesuresParDep
+                                        JOIN Mesures M USING (code_departement)
+                                        GROUP BY code_departement
+                                            """, [region])
 
             # S'il y a une erreur, on l'affiche à l'utilisateur
             except Exception as e:
